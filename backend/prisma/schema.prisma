@@ -1,0 +1,131 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  name          String
+  role          Role           @default(STUDENT)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  // Relations
+  transactions  Transaction[]
+  enrollments   Enrollment[]
+  progress      UserProgress[]
+  quizResults   QuizResult[]
+}
+
+model Category {
+  id      String   @id @default(uuid())
+  name    String   @unique
+  courses Course[]
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @db.Text
+  thumbnail   String?  // URL gambar thumbnail
+  price       Float    @default(0.0)
+  isPublished Boolean  @default(false)
+  categoryId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  chapters     Chapter[]
+  transactions Transaction[]
+  enrollments  Enrollment[]
+}
+
+model Chapter {
+  id          String   @id @default(uuid())
+  title       String
+  content     String?  @db.Text // Deskripsi/teks materi
+  videoUrl    String?  // Link video (YouTube / Cloudinary)
+  position    Int      // Urutan bab
+  isFree      Boolean  @default(false) // Bisa diakses tanpa beli
+  courseId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userProgress UserProgress[]
+  quizResults QuizResult[]
+}
+
+model UserProgress {
+  id          String   @id @default(uuid())
+  userId      String
+  chapterId   String
+  isCompleted Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterId]) // Satu user hanya punya 1 record progres per bab
+}
+
+model Transaction {
+  id            String            @id @default(uuid())
+  userId        String
+  courseId      String
+  amount        Float
+  status        TransactionStatus @default(PENDING)
+  paymentMethod String            @default("BANK_TRANSFER") // E.g., QRIS, VA
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  // Relations
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course        Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId]) // Mencegah double enrollment untuk kursus yang sama
+}
+
+model QuizResult {
+  id        String   @id @default(uuid())
+  userId    String
+  chapterId String
+  score     Int
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterId]) // Satu user hanya punya 1 skor tertinggi/terakhir per bab kuis
+}

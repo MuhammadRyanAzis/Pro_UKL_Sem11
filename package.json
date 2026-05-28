@@ -1,0 +1,12 @@
+{
+  "name": "devacademy-ukl",
+  "version": "1.0.0",
+  "description": "DevAcademy UKL E-Learning Platform",
+  "scripts": {
+    "dev": "node scripts/dev-runner.js",
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
