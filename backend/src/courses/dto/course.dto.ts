@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional, IsBoolean, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsOptional, IsBoolean, IsUUID, Min, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CourseDto {
@@ -10,6 +10,7 @@ export class CourseDto {
   @ApiProperty({ example: 'Learn NestJS architecture, controllers, services, and modules step by step.' })
   @IsString()
   @IsNotEmpty()
+  @MinLength(10, { message: 'Description must be at least 10 characters long' })
   description: string;
 
   @ApiProperty({ example: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97', required: false })
@@ -20,6 +21,7 @@ export class CourseDto {
   @ApiProperty({ example: 150000 })
   @IsNumber()
   @IsNotEmpty()
+  @Min(0, { message: 'Price cannot be negative' })
   price: number;
 
   @ApiProperty({ example: 'uuid-of-category' })

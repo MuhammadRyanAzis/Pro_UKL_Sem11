@@ -9,11 +9,21 @@ import {
   Shield, LayoutDashboard, BookOpen, Tags, Users,
   Plus, Trash2, ListVideo, Download, X,
   Pencil, FileText, CheckSquare, Square, Save, RefreshCw,
-  AlertTriangle,
+  AlertTriangle, CreditCard, CheckCircle2, XCircle, Clock,
 } from "lucide-react";
 
 // ---------- Interfaces ----------
 interface Category { id: string; name: string; }
+
+interface Transaction {
+  id: string;
+  amount: number;
+  status: "PENDING" | "SUCCESS" | "FAILED";
+  paymentMethod: string;
+  createdAt: string;
+  user: { name: string; email: string };
+  course: { title: string; price: number };
+}
 
 interface Course {
   id: string;
@@ -49,12 +59,13 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { toasts, toast, removeToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "categories" | "courses" | "users">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "categories" | "courses" | "users" | "transactions">("overview");
 
   // Core data
   const [categories, setCategories] = useState<Category[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [usersList, setUsersList] = useState<UserItem[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Confirm Dialog
@@ -106,14 +117,16 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [cats, crs, usrs] = await Promise.all([
+      const [cats, crs, usrs, txns] = await Promise.all([
         apiRequest("/categories"),
         apiRequest("/courses"),
         apiRequest("/users"),
+        apiRequest("/transactions"),
       ]);
       setCategories(cats);
       setCourses(crs);
       setUsersList(usrs);
+      setTransactions(txns);
     } catch (err: any) {
       toast.error("Failed to load data: " + err.message);
     } finally {
@@ -462,10 +475,11 @@ export default function AdminDashboard() {
           </div>
           <nav className="flex-1 p-4 space-y-1">
             {[
-              { id: "overview",    label: "Overview",           Icon: LayoutDashboard },
-              { id: "users",       label: "Manage Users",       Icon: Users           },
-              { id: "courses",     label: "Manage Courses",     Icon: BookOpen        },
-              { id: "categories",  label: "Manage Categories",  Icon: Tags            },
+              { id: "overview",      label: "Overview",             Icon: LayoutDashboard },
+              { id: "users",         label: "Manage Users",         Icon: Users           },
+              { id: "courses",       label: "Manage Courses",       Icon: BookOpen        },
+              { id: "categories",    label: "Manage Categories",    Icon: Tags            },
+              { id: "transactions",  label: "Manage Transactions",  Icon: CreditCard      },
             ].map(({ id, label, Icon }) => (
               <button
                 key={id}
@@ -497,15 +511,29 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {[
-                  { label: "Total Users",      value: usersList.length  },
-                  { label: "Total Courses",    value: courses.length    },
-                  { label: "Total Categories", value: categories.length },
-                ].map(({ label, value }) => (
-                  <div key={label} className="glass-panel p-6 rounded-2xl border border-zinc-800">
-                    <div className="text-zinc-500 text-sm font-bold uppercase tracking-wide">{label}</div>
-                    <div className="text-4xl font-black text-white mt-2">{value}</div>
+                  { label: "Total Users",        value: usersList.length,                                              color: "text-violet-400" },
+                  { label: "Total Courses",      value: courses.length,                                                color: "text-blue-400"   },
+                  { label: "Total Categories",   value: categories.length,                                             color: "text-emerald-400" },
+                  { label: "Total Transactions", value: transactions.length,                                           color: "text-yellow-400" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="glass-panel p-5 rounded-2xl border border-zinc-800">
+                    <div className="text-zinc-500 text-xs font-bold uppercase tracking-wide">{label}</div>
+                    <div className={`text-4xl font-black mt-2 ${color}`}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Transaction summary badges */}
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { label: "Sukses",  count: transactions.filter(t => t.status === "SUCCESS").length,  bg: "bg-green-500/10 border-green-500/20 text-green-400"  },
+                  { label: "Pending", count: transactions.filter(t => t.status === "PENDING").length,  bg: "bg-yellow-500/10 border-yellow-500/20 text-yellow-400" },
+                  { label: "Gagal",   count: transactions.filter(t => t.status === "FAILED").length,   bg: "bg-red-500/10 border-red-500/20 text-red-400"         },
+                ].map(({ label, count, bg }) => (
+                  <div key={label} className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full border ${bg}`}>
+                    <span>{label}:</span>
+                    <span className="font-black">{count}</span>
                   </div>
                 ))}
               </div>
@@ -666,6 +694,75 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+
+          {/* ---- TRANSACTIONS ---- */}
+          {activeTab === "transactions" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <h1 className="text-2xl font-bold">Manage Transactions</h1>
+                <button onClick={handleExportTransactions} className="flex items-center gap-2 rounded-lg bg-violet-600/20 text-violet-400 border border-violet-500/30 px-4 py-2 text-sm font-semibold hover:bg-violet-600/30 transition-all">
+                  <Download size={16} /> Export PDF
+                </button>
+              </div>
+              <div className="glass-panel rounded-xl border border-zinc-800 overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-[750px]">
+                  <thead className="bg-zinc-900/80 text-zinc-400">
+                    <tr>
+                      <th className="px-5 py-4 font-semibold">Tanggal</th>
+                      <th className="px-5 py-4 font-semibold">Student</th>
+                      <th className="px-5 py-4 font-semibold">Kursus</th>
+                      <th className="px-5 py-4 font-semibold text-right">Harga</th>
+                      <th className="px-5 py-4 font-semibold">Metode</th>
+                      <th className="px-5 py-4 font-semibold text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800">
+                    {transactions.map((txn) => {
+                      const statusConfig = {
+                        SUCCESS: { label: "SUCCESS", Icon: CheckCircle2, cls: "bg-green-500/15 text-green-400 border-green-500/30" },
+                        PENDING: { label: "PENDING", Icon: Clock,         cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" },
+                        FAILED:  { label: "FAILED",  Icon: XCircle,        cls: "bg-red-500/15 text-red-400 border-red-500/30"         },
+                      }[txn.status];
+                      return (
+                        <tr key={txn.id} className="hover:bg-zinc-900/30 transition-colors">
+                          <td className="px-5 py-4 text-zinc-400 whitespace-nowrap">
+                            {new Date(txn.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                          </td>
+                          <td className="px-5 py-4">
+                            <p className="font-semibold text-zinc-200 truncate max-w-[130px]">{txn.user.name}</p>
+                            <p className="text-xs text-zinc-500 truncate max-w-[130px]">{txn.user.email}</p>
+                          </td>
+                          <td className="px-5 py-4">
+                            <p className="text-zinc-300 truncate max-w-[180px] text-xs font-medium">{txn.course.title}</p>
+                          </td>
+                          <td className="px-5 py-4 text-right font-bold">
+                            {txn.amount === 0
+                              ? <span className="text-green-400 text-xs">FREE</span>
+                              : <span className="text-yellow-400">Rp {txn.amount.toLocaleString("id-ID")}</span>
+                            }
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-xs font-semibold bg-zinc-800 text-zinc-400 px-2 py-1 rounded">{txn.paymentMethod}</span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex justify-center">
+                              <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${statusConfig.cls}`}>
+                                <statusConfig.Icon size={11} />
+                                {statusConfig.label}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {transactions.length === 0 && (
+                      <tr><td colSpan={6} className="px-6 py-10 text-center text-zinc-500">Belum ada transaksi.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -793,7 +890,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <label className={labelClass}>Description *</label>
-                <textarea required rows={4} value={newCourse.description} onChange={e => setNewCourse({ ...newCourse, description: e.target.value })} placeholder="Course description..." className={`${inputClass} resize-none`} />
+                <textarea required minLength={10} rows={4} value={newCourse.description} onChange={e => setNewCourse({ ...newCourse, description: e.target.value })} placeholder="Course description (min 10 chars)..." className={`${inputClass} resize-none`} />
               </div>
               <div className="pt-1">
                 <button type="submit" disabled={isSubmitting} className="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-lg py-2.5 text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2">
@@ -841,7 +938,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <label className={labelClass}>Description *</label>
-                <textarea required rows={4} value={editCourseData.description} onChange={e => setEditCourseData({ ...editCourseData, description: e.target.value })} className={`${inputClass} resize-none`} />
+                <textarea required minLength={10} rows={4} value={editCourseData.description} onChange={e => setEditCourseData({ ...editCourseData, description: e.target.value })} className={`${inputClass} resize-none`} />
               </div>
               <div className="pt-1 flex gap-3">
                 <button type="button" onClick={() => setShowEditCourseModal(false)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white font-semibold rounded-lg py-2.5 text-sm">Cancel</button>

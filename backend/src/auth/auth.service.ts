@@ -28,7 +28,7 @@ export class AuthService {
         email: dto.email,
         password: hashedPassword,
         name: dto.name,
-        role: dto.role || 'STUDENT',
+        role: 'STUDENT', // Role selalu STUDENT saat registrasi. Admin hanya dibuat via seed/database.
       },
     });
 

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsOptional, IsBoolean, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ChapterDto {
@@ -20,6 +20,7 @@ export class ChapterDto {
   @ApiProperty({ example: 1 })
   @IsNumber()
   @IsNotEmpty()
+  @Min(1, { message: 'Position must be at least 1' })
   position: number;
 
   @ApiProperty({ example: false, default: false, required: false })

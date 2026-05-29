@@ -15,7 +15,6 @@ function AuthFormContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<"STUDENT" | "ADMIN">("STUDENT");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -43,7 +42,7 @@ function AuthFormContent() {
         }
         await apiRequest("/auth/register", {
           method: "POST",
-          body: JSON.stringify({ email, password, name, role }),
+          body: JSON.stringify({ email, password, name }),
         });
         setSuccess("Registration successful! You can now log in.");
         setTab("login");
@@ -117,40 +116,24 @@ function AuthFormContent() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         {tab === "register" && (
-          <>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
-                Full Name
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">
-                  <User size={16} />
-                </span>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Budi Santoso"
-                  className="w-full rounded-lg border border-zinc-800 bg-zinc-900/40 pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-650 focus:border-violet-500 focus:outline-none transition-all"
-                />
-              </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+              Full Name
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">
+                <User size={16} />
+              </span>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Budi Santoso"
+                className="w-full rounded-lg border border-zinc-800 bg-zinc-900/40 pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-650 focus:border-violet-500 focus:outline-none transition-all"
+              />
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
-                Account Role (Simulated)
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as any)}
-                className="w-full rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2.5 text-sm text-white focus:border-violet-500 focus:outline-none transition-all"
-              >
-                <option value="STUDENT" className="bg-zinc-950">Student</option>
-                <option value="ADMIN" className="bg-zinc-950">Admin</option>
-              </select>
-            </div>
-          </>
+          </div>
         )}
 
         <div>

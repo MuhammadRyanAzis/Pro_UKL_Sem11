@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { apiRequest, getUser } from "../../../../lib/api";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { 
   ChevronLeft, 
   Menu, 
@@ -12,7 +14,8 @@ import {
   PlayCircle,
   FileText,
   Award,
-  HelpCircle
+  HelpCircle,
+  Video,
 } from "lucide-react";
 
 interface Chapter {
@@ -118,7 +121,13 @@ export default function CoursePlayer() {
 
   const renderContent = () => {
     if (!activeChapter?.content) {
-      return <p className="italic text-zinc-500">No additional reading material provided.</p>;
+      return (
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <Video size={36} className="text-zinc-700" />
+          <p className="italic text-zinc-500 text-sm">Materi teks belum tersedia untuk bab ini.</p>
+          {activeChapter?.videoUrl && <p className="text-xs text-violet-400">Silakan tonton video di atas.</p>}
+        </div>
+      );
     }
 
     // Try parsing as JSON (for Quiz)
@@ -128,12 +137,53 @@ export default function CoursePlayer() {
         return renderQuiz(parsed);
       }
     } catch (e) {
-      // Not JSON, render as standard Markdown/Text
+      // Not JSON, render as Markdown
     }
 
+    // Render as full Markdown with GFM support
     return (
-      <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base prose prose-invert max-w-none text-zinc-300">
-        {activeChapter.content}
+      <div className="markdown-content leading-relaxed text-sm md:text-base text-zinc-300 max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            h1: ({ children }) => <h1 className="text-2xl font-bold text-white mt-6 mb-3 border-b border-zinc-800 pb-2">{children}</h1>,
+            h2: ({ children }) => <h2 className="text-xl font-bold text-white mt-5 mb-2">{children}</h2>,
+            h3: ({ children }) => <h3 className="text-lg font-semibold text-violet-300 mt-4 mb-2">{children}</h3>,
+            h4: ({ children }) => <h4 className="text-base font-semibold text-zinc-200 mt-3 mb-1">{children}</h4>,
+            p: ({ children }) => <p className="text-zinc-300 leading-relaxed mb-4">{children}</p>,
+            strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+            em: ({ children }) => <em className="italic text-zinc-200">{children}</em>,
+            ul: ({ children }) => <ul className="list-disc list-inside space-y-1.5 mb-4 pl-2 text-zinc-300">{children}</ul>,
+            ol: ({ children }) => <ol className="list-decimal list-inside space-y-1.5 mb-4 pl-2 text-zinc-300">{children}</ol>,
+            li: ({ children }) => <li className="text-zinc-300 leading-relaxed">{children}</li>,
+            blockquote: ({ children }) => (
+              <blockquote className="border-l-4 border-violet-500 pl-4 py-1 my-4 bg-violet-500/5 rounded-r-lg text-zinc-400 italic">{children}</blockquote>
+            ),
+            code: ({ inline, children }: any) =>
+              inline ? (
+                <code className="bg-zinc-800 text-violet-300 px-1.5 py-0.5 rounded text-sm font-mono border border-zinc-700">{children}</code>
+              ) : (
+                <code className="block bg-zinc-900 border border-zinc-700 rounded-xl p-4 my-4 text-sm font-mono text-green-300 overflow-x-auto whitespace-pre leading-relaxed">{children}</code>
+              ),
+            pre: ({ children }) => <pre className="my-4 overflow-hidden rounded-xl">{children}</pre>,
+            a: ({ href, children }) => (
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 underline transition-colors">{children}</a>
+            ),
+            hr: () => <hr className="border-zinc-800 my-6" />,
+            table: ({ children }) => (
+              <div className="overflow-x-auto my-4">
+                <table className="w-full text-sm border-collapse border border-zinc-700 rounded-lg overflow-hidden">{children}</table>
+              </div>
+            ),
+            thead: ({ children }) => <thead className="bg-zinc-800 text-zinc-300 font-semibold">{children}</thead>,
+            tbody: ({ children }) => <tbody className="divide-y divide-zinc-700">{children}</tbody>,
+            tr: ({ children }) => <tr className="hover:bg-zinc-800/50 transition-colors">{children}</tr>,
+            th: ({ children }) => <th className="px-4 py-2 text-left border border-zinc-700">{children}</th>,
+            td: ({ children }) => <td className="px-4 py-2 border border-zinc-700 text-zinc-400">{children}</td>,
+          }}
+        >
+          {activeChapter.content}
+        </ReactMarkdown>
       </div>
     );
   };
@@ -390,9 +440,21 @@ export default function CoursePlayer() {
             {course.chapters.map((chapter) => {
               const isActive = activeChapter.id === chapter.id;
               const isChapCompleted = course.completedChapters.includes(chapter.id);
-              
-              // Simple check to display correct icon in sidebar
-              const isQuiz = chapter.title.toLowerCase().includes("kuis");
+
+              // Detect chapter type accurately from data
+              let chapterType: "quiz" | "video" | "text";
+              try {
+                const parsed = JSON.parse(chapter.content || "");
+                chapterType = parsed?.type === "quiz" ? "quiz" : "text";
+              } catch {
+                chapterType = chapter.videoUrl ? "video" : "text";
+              }
+
+              const typeConfig = {
+                quiz:  { Icon: HelpCircle, label: "Kuis",        cls: "text-yellow-500" },
+                video: { Icon: PlayCircle, label: "Video + Teks", cls: "text-blue-400"   },
+                text:  { Icon: FileText,   label: "Materi Teks",  cls: "text-zinc-500"   },
+              }[chapterType];
 
               return (
                 <button
@@ -417,9 +479,9 @@ export default function CoursePlayer() {
                     <p className={`text-sm font-medium line-clamp-2 ${isActive ? "text-violet-100" : "text-zinc-300"}`}>
                       {chapter.position}. {chapter.title}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-1 text-xs text-zinc-500">
-                      {isQuiz ? <HelpCircle size={12} /> : <PlayCircle size={12} />}
-                      <span>{isQuiz ? "Quiz" : "Video / Text"}</span>
+                    <div className={`flex items-center gap-1.5 mt-1 text-xs ${typeConfig.cls}`}>
+                      <typeConfig.Icon size={12} />
+                      <span>{typeConfig.label}</span>
                     </div>
                   </div>
                 </button>
