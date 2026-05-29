@@ -219,7 +219,9 @@ export default function Home() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                      <span className="text-xs font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded">100% Free</span>
+                      <span className={`text-xs font-bold px-2 py-1 rounded ${course.price === 0 ? "text-green-400 bg-green-500/10" : "text-violet-400 bg-violet-500/10"}`}>
+                        {formatPrice(course.price)}
+                      </span>
                       <Link
                         href={`/courses/${course.id}`}
                         className="rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-violet-600 hover:border-violet-500 hover:text-white px-3.5 py-2 text-xs font-semibold text-zinc-300 transition-all"

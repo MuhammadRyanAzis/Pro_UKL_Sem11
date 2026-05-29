@@ -35,8 +35,8 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# dotenv environment variable files
-.env
+# dotenv environment variable files — .env utama boleh di-commit (localhost only)
+# .env
 .env.development.local
 .env.test.local
 .env.production.local
